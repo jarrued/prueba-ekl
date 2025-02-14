@@ -1,0 +1,89 @@
+version: '8.17'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.2
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - elastic
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.2
+    container_name: kibana1
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    networks:
+      - elastic
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.17.2
+    container_name: logstash
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - 5044:5044
+      - 9600:9600
+    networks:
+      - elastic
+
+  python:
+    image: python:3.9
+    container_name: python
+    volumes:
+      - ./scripts:/scripts
+    working_dir: /scripts
+    command: ["sh", "-c", "python -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt && python query_elasticsearch.py"]
+    networks:
+      - elastic
+  python_query:
+    image: python:3.9
+    container_name: python_query
+    volumes:
+      - ./scripts:/scripts
+    working_dir: /scripts
+    command: ["sh", "-c", "python -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt && python query_elasticsearch.py"]
+    networks:
+      - elastic
+  python_index:
+    image: python:3.9
+    container_name: python_index
+    volumes:
+      - ./scripts:/scripts
+    working_dir: /scripts
+    command: ["sh", "-c", "python -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt && python index_web_content.py"]
+    networks:
+      - elastic
+  python_web:
+    image: python:3.9
+    container_name: python_web
+    volumes:
+      - ./scripts:/scripts
+    working_dir: /scripts
+    command: ["sh", "-c", "python -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt && python app.py"]
+    ports:
+      - "5000:5000"
+    networks:
+      - elastic
+volumes:
+  esdata:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge

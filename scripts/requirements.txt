@@ -1,0 +1,6 @@
+sentence-transformers
+nltk
+spacy
+transformers
+beautifulsoup4
+flask
